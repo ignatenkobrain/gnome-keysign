@@ -80,34 +80,6 @@ gks_remove_childrens (GtkContainer *container)
   g_list_free (children);
 }
 
-
-static void
-gks_key_presented_cb (GtkListBox    *box,
-                      GtkListBoxRow *row,
-                      GksPrivate    *priv)
-{
-  GList *grid;
-  GtkLabel *name_label, *signed_times_label;
-  const gchar *keyid;
-  gint times_signed;
-
-  grid = gtk_container_get_children (GTK_CONTAINER (row));
-  name_label = GTK_LABEL (gtk_grid_get_child_at (GTK_GRID (grid->data), 0, 0));
-  signed_times_label = GTK_LABEL (gtk_grid_get_child_at (GTK_GRID (grid->data),
-                                                         1, 0));
-  g_list_free (grid);
-  keyid = gtk_label_get_text (name_label);
-  times_signed = g_key_file_get_integer (priv->data, keyid,
-                                         "times_signed", NULL);
-  times_signed++;
-  g_key_file_set_integer (priv->data, keyid,
-                          "times_signed", times_signed);
-  gchar buf[G_ASCII_DTOSTR_BUF_SIZE];
-  gchar *t = g_ascii_dtostr (buf, sizeof (buf), times_signed);
-  gtk_label_set_text (signed_times_label, t);
-  gks_save_cache (priv);
-}
-
 static void
 gks_add_key_to_list (gpointer data,
                      gpointer user_data)
@@ -209,6 +181,34 @@ gks_refresh_keys (GApplication *application,
       gks_add_key_to_list ((gpointer) k, (gpointer) signed_keys);
   }
   g_object_unref (gpg);
+}
+
+static void
+gks_key_presented_cb (GtkListBox    *box,
+                      GtkListBoxRow *row,
+                      GksPrivate    *priv)
+{
+  GList *grid;
+  GtkLabel *name_label, *signed_times_label;
+  const gchar *keyid;
+  gint times_signed;
+
+  grid = gtk_container_get_children (GTK_CONTAINER (row));
+  name_label = GTK_LABEL (gtk_grid_get_child_at (GTK_GRID (grid->data), 0, 0));
+  signed_times_label = GTK_LABEL (gtk_grid_get_child_at (GTK_GRID (grid->data),
+                                                         1, 0));
+  g_list_free (grid);
+  keyid = gtk_label_get_text (name_label);
+  times_signed = g_key_file_get_integer (priv->data, keyid,
+                                         "times_signed", NULL);
+  times_signed++;
+  g_key_file_set_integer (priv->data, keyid,
+                          "times_signed", times_signed);
+  gchar buf[G_ASCII_DTOSTR_BUF_SIZE];
+  gchar *t = g_ascii_dtostr (buf, sizeof (buf), times_signed);
+  gtk_label_set_text (signed_times_label, t);
+  gks_save_cache (priv);
+  gks_refresh_keys (NULL, priv);
 }
 
 static void
