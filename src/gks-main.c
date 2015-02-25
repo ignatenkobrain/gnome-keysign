@@ -28,7 +28,6 @@
 
 typedef struct {
   GPtrArray      *keys;
-  GPtrArray      *secret_keys;
   GtkApplication *application;
   GtkBuilder     *builder;
 } GksPrivate;
@@ -112,15 +111,13 @@ gks_refresh_keys (GApplication *application,
   GksGpg *gpg = gks_gpg_new ();
 
   g_ptr_array_unref (priv->keys);
-  g_ptr_array_unref (priv->secret_keys);
-  priv->keys = gks_gpg_list_keys (gpg, FALSE);
-  priv->secret_keys = gks_gpg_list_keys (gpg, TRUE);
+  priv->keys = gks_gpg_list_keys (gpg);
 
   my_keys = GTK_LIST_BOX (gtk_builder_get_object (priv->builder, "my_keys"));
   signed_keys = GTK_LIST_BOX (gtk_builder_get_object (priv->builder, "signed_keys"));
 
   gks_remove_childrens (GTK_CONTAINER (my_keys));
-  g_ptr_array_foreach (priv->secret_keys, (GFunc) gks_add_key_to_list,
+  g_ptr_array_foreach (priv->keys, (GFunc) gks_add_key_to_list,
                        (gpointer) my_keys);
 
   gks_remove_childrens (GTK_CONTAINER (signed_keys));
@@ -200,7 +197,6 @@ main (int    argc,
   priv = g_new0 (GksPrivate, 1);
 
   priv->keys = g_ptr_array_new_with_free_func ((GDestroyNotify) gpgme_key_unref);
-  priv->secret_keys = g_ptr_array_new_with_free_func ((GDestroyNotify) gpgme_key_unref);
 
   priv->application = gtk_application_new ("org.gnome.KeySign", 0);
   g_signal_connect (priv->application, "startup",

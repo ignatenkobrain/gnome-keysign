@@ -51,9 +51,7 @@ struct _GksGpgClass
 GType       gks_gpg_get_type (void);
 GksGpg     *gks_gpg_new      (void);
 
-GPtrArray *
-gks_gpg_list_keys (GksGpg   *self,
-                   gboolean  secret);
+GPtrArray *gks_gpg_list_keys (GksGpg  *self);
 
 G_END_DECLS
 

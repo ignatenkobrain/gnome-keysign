@@ -43,25 +43,23 @@ gks_gpg_new (void)
 /**
  * gks_gpg_list_keys:
  * @self: #GksGpg
- * @secret: %TRUE to get secret keys or %FALSE
  *
  * Returns: %GPtrArray with list of found keys
  */
 GPtrArray *
-gks_gpg_list_keys (GksGpg   *self,
-                   gboolean  secret)
+gks_gpg_list_keys (GksGpg   *self)
 {
   GksGpgPrivate *priv = self->priv;
   gpgme_key_t key;
   gpgme_error_t err;
   GPtrArray *keys = g_ptr_array_new_with_free_func ((GDestroyNotify) gpgme_key_unref);
 
-  err = gpgme_op_keylist_start (priv->ctx, NULL, secret ? 1 : 0);
+  err = gpgme_op_keylist_start (priv->ctx, NULL, 0);
   while (!err) {
     err = gpgme_op_keylist_next (priv->ctx, &key);
     if (err)
       break;
-    g_debug ("Found %s key: %s", secret ? "secret" : "public", key->subkeys->keyid);
+    g_debug ("Found key: %s", key->subkeys->keyid);
     g_ptr_array_add (keys, (gpointer) key);
   }
   if (gpg_err_code (err) != GPG_ERR_EOF) {
