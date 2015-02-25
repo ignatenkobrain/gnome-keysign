@@ -144,10 +144,29 @@ gks_add_key_to_list (gpointer data,
 }
 
 static void
+gks_refresh_keys_ui (GksPrivate *priv)
+{
+  GtkListBox *my_keys = GTK_LIST_BOX (
+      gtk_builder_get_object (priv->builder, "my_keys"));
+  GtkListBox *signed_keys = GTK_LIST_BOX (
+      gtk_builder_get_object (priv->builder, "signed_keys"));
+
+  gks_remove_childrens (GTK_CONTAINER (my_keys));
+  g_ptr_array_foreach (priv->keys, (GFunc) gks_add_key_to_list,
+                       (gpointer) my_keys);
+
+  gks_remove_childrens (GTK_CONTAINER (signed_keys));
+  for (gint i = 0; i < priv->keys->len; i++) {
+    GksKey *k = g_ptr_array_index (priv->keys, i);
+    if (k->times_signed > 0)
+      gks_add_key_to_list ((gpointer) k, (gpointer) signed_keys);
+  }
+}
+
+static void
 gks_refresh_keys (GApplication *application,
                   GksPrivate   *priv)
 {
-  GtkListBox *my_keys, *signed_keys;
   GksGpg *gpg = gks_gpg_new ();
   gint i;
 
@@ -166,21 +185,9 @@ gks_refresh_keys (GApplication *application,
                                 "times_signed", NULL));
     g_ptr_array_add (priv->keys, k);
   }
-
-  my_keys = GTK_LIST_BOX (gtk_builder_get_object (priv->builder, "my_keys"));
-  signed_keys = GTK_LIST_BOX (gtk_builder_get_object (priv->builder, "signed_keys"));
-
-  gks_remove_childrens (GTK_CONTAINER (my_keys));
-  g_ptr_array_foreach (priv->keys, (GFunc) gks_add_key_to_list,
-                       (gpointer) my_keys);
-
-  gks_remove_childrens (GTK_CONTAINER (signed_keys));
-  for (i = 0; i < priv->keys->len; i++) {
-    GksKey *k = g_ptr_array_index (priv->keys, i);
-    if (k->times_signed > 0)
-      gks_add_key_to_list ((gpointer) k, (gpointer) signed_keys);
-  }
   g_object_unref (gpg);
+
+  gks_refresh_keys_ui (priv);
 }
 
 static void
@@ -199,16 +206,20 @@ gks_key_presented_cb (GtkListBox    *box,
                                                          1, 0));
   g_list_free (grid);
   keyid = gtk_label_get_text (name_label);
-  times_signed = g_key_file_get_integer (priv->data, keyid,
-                                         "times_signed", NULL);
-  times_signed++;
+  for (gint i = 0; i < priv->keys->len; i++) {
+    GksKey *key = g_ptr_array_index (priv->keys, i);
+    if (g_strcmp0 (key->key->subkeys->keyid, keyid) == 0) {
+      key->times_signed++;
+      times_signed = key->times_signed;
+    }
+  }
   g_key_file_set_integer (priv->data, keyid,
                           "times_signed", times_signed);
   gchar buf[G_ASCII_DTOSTR_BUF_SIZE];
   gchar *t = g_ascii_dtostr (buf, sizeof (buf), times_signed);
   gtk_label_set_text (signed_times_label, t);
   gks_save_cache (priv);
-  gks_refresh_keys (NULL, priv);
+  gks_refresh_keys_ui (priv);
 }
 
 static void
@@ -224,7 +235,7 @@ static void
 gks_startup_cb (GApplication *application,
                 GksPrivate   *priv)
 {
-  GtkWidget *main_window, *refresh_btn, *my_keys;
+  GtkWidget *main_window, *refresh_btn, *keys;
   gint retval;
   _cleanup_error_free_ GError *error = NULL;
 
@@ -245,8 +256,11 @@ gks_startup_cb (GApplication *application,
   refresh_btn = GTK_WIDGET (gtk_builder_get_object (priv->builder, "refresh_btn"));
   g_signal_connect (refresh_btn, "clicked",
                     G_CALLBACK (gks_refresh_keys), priv);
-  my_keys = GTK_WIDGET (gtk_builder_get_object (priv->builder, "my_keys"));
-  g_signal_connect (my_keys, "row-activated",
+  keys = GTK_WIDGET (gtk_builder_get_object (priv->builder, "my_keys"));
+  g_signal_connect (keys, "row-activated",
+                    G_CALLBACK (gks_key_presented_cb), priv);
+  keys = GTK_WIDGET (gtk_builder_get_object (priv->builder, "signed_keys"));
+  g_signal_connect (keys, "row-activated",
                     G_CALLBACK (gks_key_presented_cb), priv);
 
   gks_refresh_keys (application, priv);
