@@ -9,16 +9,56 @@
   </object>
   <object class="GtkApplicationWindow" id="dialog_main">
     <property name="can_focus">False</property>
-    <signal name="delete-event" handler="onDeleteWindow" swapped="no"/>
     <child>
       <object class="GtkStack" id="stack1">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>
-          <object class="GtkListBox" id="my_keys">
+          <object class="GtkScrolledWindow" id="scrolledwindow1">
             <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="selection_mode">none</property>
+            <property name="can_focus">True</property>
+            <property name="shadow_type">in</property>
+            <child>
+              <object class="GtkViewport" id="viewport1">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <child>
+                  <object class="GtkBox" id="box1">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="orientation">vertical</property>
+                    <child>
+                      <object class="GtkLabel" id="label1">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Times signed</property>
+                        <property name="xalign">1</property>
+                        <style>
+                          <class name="dim-label"/>
+                        </style>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkListBox" id="my_keys">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="selection_mode">none</property>
+                      </object>
+                      <packing>
+                        <property name="expand">True</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
           </object>
           <packing>
             <property name="name">Your Keys</property>
@@ -26,10 +66,51 @@
           </packing>
         </child>
         <child>
-          <object class="GtkListBox" id="signed_keys">
+          <object class="GtkScrolledWindow" id="scrolledwindow2">
             <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="selection_mode">none</property>
+            <property name="can_focus">True</property>
+            <property name="shadow_type">in</property>
+            <child>
+              <object class="GtkViewport" id="viewport2">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <child>
+                  <object class="GtkBox" id="box2">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="orientation">vertical</property>
+                    <child>
+                      <object class="GtkLabel" id="label2">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Times signed</property>
+                        <property name="xalign">1</property>
+                        <style>
+                          <class name="dim-label"/>
+                        </style>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkListBox" id="signed_keys">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="selection_mode">none</property>
+                      </object>
+                      <packing>
+                        <property name="expand">True</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
           </object>
           <packing>
             <property name="name">Signed Keys</property>

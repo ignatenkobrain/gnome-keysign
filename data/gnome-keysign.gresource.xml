@@ -2,5 +2,6 @@
 <gresources>
  <gresource prefix="/org/gnome/KeySign">
   <file compressed="true">gks-main.ui</file>
+  <file compressed="true">gks-row.ui</file>
  </gresource>
 </gresources>

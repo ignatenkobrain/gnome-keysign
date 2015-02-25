@@ -21,6 +21,7 @@
 #include <gtk/gtk.h>
 #include <locale.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "gks-cleanup.h"
 #include "gks-gpg.h"
@@ -48,12 +49,61 @@ gks_add_key_to_list (gpointer data,
                      gpointer user_data)
 {
   gpgme_key_t key = (gpgme_key_t) data;
+  gpgme_user_id_t subkey;
   GtkListBox *lbox = GTK_LIST_BOX (user_data);
+  GtkBuilder *builder;
+  gint retval, i;
+  gchar *comment;
+  _cleanup_error_free_ GError *error = NULL;
 
-  GtkWidget *label = gtk_label_new (key->subkeys->keyid);
-  gtk_list_box_insert (lbox, label, -1);
-  gtk_widget_show (label);
+  builder = gtk_builder_new ();
+  retval = gtk_builder_add_from_resource (builder,
+                                          "/org/gnome/KeySign/gks-row.ui",
+                                          &error);
+  if (retval == 0) {
+    g_warning ("failed to load ui: %s", error->message);
+    return;
+  }
+
+  GtkWidget *row = GTK_WIDGET (gtk_builder_get_object (builder, "row"));
+  GtkLabel *name_label = GTK_LABEL (
+      gtk_builder_get_object (builder, "name_label"));
+  GtkLabel *description_label = GTK_LABEL (
+      gtk_builder_get_object (builder, "description_label"));
+  /* TODO: implement signed_times */
+  GtkLabel *expiration_label = GTK_LABEL (
+      gtk_builder_get_object (builder, "expiration_label"));
+
+  subkey = key->uids;
+  i = 0;
+  comment = g_strdup ("");
+  while (subkey != NULL) {
+    g_debug ("Found uid: %s", subkey->uid);
+    comment = g_strconcat (comment, subkey->uid, "\n", NULL);
+    subkey = subkey->next;
+    i++;
+  }
+
+  gchar *expires = g_strdup ("never");
+  if (key->subkeys->expires != 0) {
+    GDateTime *date = g_date_time_new_from_unix_local (key->subkeys->expires);
+    expires = g_date_time_format (date, "%Y-%m-%d");
+    g_date_time_unref (date);
+  }
+  const gchar *format = "<span size=\"small\">Expires %s</span>";
+  gchar *markup;
+  markup = g_markup_printf_escaped (format, expires);
+
+  gtk_label_set_text (name_label, key->subkeys->keyid);
+  gtk_label_set_text (description_label, comment);
+  gtk_label_set_markup (expiration_label, markup);
+  gtk_list_box_insert (lbox, row, -1);
+  gtk_widget_show_all (row);
+  g_free (comment);
+  g_free (markup);
+  g_free (expires);
 }
+
 static void
 gks_refresh_keys (GApplication *application,
                   GksPrivate   *priv)
