@@ -24,15 +24,9 @@
 G_BEGIN_DECLS
 
 #define GKS_TYPE_GPG            (gks_gpg_get_type())
-#define GKS_GPG(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), GKS_TYPE_GPG, GksGpg))
-#define GKS_GPG_CONST(obj)      (G_TYPE_CHECK_INSTANCE_CAST ((obj), GKS_TYPE_GPG, GksGpg const))
-#define GKS_GPG_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass),  GKS_TYPE_GPG, GksGpgClass))
-#define GKS_IS_GPG(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), GKS_TYPE_GPG))
-#define GKS_IS_GPG_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass),  GKS_TYPE_GPG))
-#define GKS_GPG_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj),  GKS_TYPE_GPG, GksGpgClass))
 
-typedef struct _GksGpg        GksGpg;
-typedef struct _GksGpgClass   GksGpgClass;
+G_DECLARE_FINAL_TYPE (GksGpg, gks_gpg, GKS, GPG, GObject)
+
 typedef struct _GksGpgPrivate GksGpgPrivate;
 
 struct _GksGpg
@@ -43,12 +37,6 @@ struct _GksGpg
   GksGpgPrivate *priv;
 };
 
-struct _GksGpgClass
-{
-  GObjectClass parent;
-};
-
-GType       gks_gpg_get_type (void);
 GksGpg     *gks_gpg_new      (void);
 
 GPtrArray *gks_gpg_list_keys (GksGpg  *self);

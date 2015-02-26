@@ -1,4 +1,4 @@
-glib = dependency('glib-2.0')
+glib = dependency('glib-2.0', version : '>=2.43.90')
 gpgme = find_library('gpgme')
 gtk = dependency('gtk+-3.0', version : '>=3.12')
 
