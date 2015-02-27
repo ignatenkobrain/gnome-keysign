@@ -6,6 +6,7 @@ add_global_arguments('-DG_LOG_DOMAIN="GnomeKeySign"', language : 'c')
 
 libkeysign = static_library('keysign',
                             'gks-gpg.c', 'gks-gpg.h',
+                            'gks-key.c', 'gks-key.h',
                             'gks-row.c', 'gks-row.h',
                             dependencies : [glib, gpgme, gtk],
                             install : false)

@@ -25,6 +25,7 @@
 
 #include "gks-cleanup.h"
 #include "gks-gpg.h"
+#include "gks-key.h"
 #include "gks-row.h"
 
 typedef struct {
@@ -34,28 +35,6 @@ typedef struct {
   gchar          *cachefile;
   GKeyFile       *data;
 } GksPrivate;
-
-typedef struct {
-  gpgme_key_t key;
-  guint       times_signed;
-} GksKey;
-
-static void
-gks_key_free (GksKey *key)
-{
-  gpgme_key_unref (key->key);
-}
-
-static GksKey *
-gks_key_new (gpgme_key_t key,
-             guint       times_signed)
-{
-  GksKey *k;
-  k = g_new0 (GksKey, 1);
-  k->times_signed = times_signed;
-  k->key = key;
-  return k;
-}
 
 static void
 gks_load_cache (GksPrivate *priv)
@@ -91,12 +70,12 @@ gks_is_signed (GksRow   *row,
   return FALSE;
 }
 
-static void
+GksRow *
 gks_add_key_to_list (GksKey               *k,
                      GtkListBox           *lbox,
                      GtkListBoxFilterFunc  filter)
 {
-  gpgme_key_t key = k->key;
+  gpgme_key_t key = gks_key_get_key (k);
   gpgme_user_id_t subkey;
   GtkWidget *row;
   gint i;
@@ -121,7 +100,7 @@ gks_add_key_to_list (GksKey               *k,
   }
 
   row = GTK_WIDGET (gks_row_new (key->subkeys->keyid,
-                                 k->times_signed,
+                                 gks_key_get_times_signed (k),
                                  comment,
                                  expires));
 
@@ -130,6 +109,7 @@ gks_add_key_to_list (GksKey               *k,
   gtk_widget_show_all (row);
   g_free (comment);
   g_free (expires);
+  return GKS_ROW (row);
 }
 
 static void
@@ -144,9 +124,13 @@ gks_refresh_keys_ui (GksPrivate *priv)
   gks_remove_childrens (GTK_CONTAINER (signed_keys));
 
   for (gint i = 0; i < priv->keys->len; i++) {
-    GksKey *k = g_ptr_array_index (priv->keys, i);
-    gks_add_key_to_list (k, my_keys, NULL);
-    gks_add_key_to_list (k, signed_keys, (GtkListBoxFilterFunc) gks_is_signed);
+    GksKey *k = GKS_KEY (g_ptr_array_index (priv->keys, i));
+    GksRow *r1 = gks_add_key_to_list (k, my_keys, NULL);
+    GksRow *r2 = gks_add_key_to_list (k, signed_keys,
+                                      (GtkListBoxFilterFunc) gks_is_signed);
+    g_object_bind_property (r1, "times-signed",
+                            r2, "times-signed",
+                            G_BINDING_BIDIRECTIONAL);
   }
 }
 
@@ -167,7 +151,9 @@ gks_refresh_keys (GApplication *application,
                               "times_signed", 0);
       gks_save_cache (priv);
     }
-    GksKey *k = gks_key_new (key,
+    GksKey *k = gks_key_new ();
+    gks_key_set_key (k, key);
+    gks_key_set_times_signed (k,
         g_key_file_get_integer (priv->data, key->subkeys->keyid,
                                 "times_signed", NULL));
     g_ptr_array_add (priv->keys, k);
@@ -187,10 +173,11 @@ gks_key_presented_cb (GtkListBox *box,
 
   keyid = gks_row_get_keyid (row);
   for (gint i = 0; i < priv->keys->len; i++) {
-    GksKey *key = g_ptr_array_index (priv->keys, i);
-    if (g_strcmp0 (key->key->subkeys->keyid, keyid) == 0) {
-      key->times_signed++;
-      times_signed = key->times_signed;
+    GksKey *key = GKS_KEY (g_ptr_array_index (priv->keys, i));
+    if (g_strcmp0 (gks_key_get_key (key)->subkeys->keyid, keyid) == 0) {
+      times_signed = gks_key_get_times_signed (key);
+      times_signed++;
+      gks_key_set_times_signed (key, times_signed);
     }
   }
   g_key_file_set_integer (priv->data, keyid,
@@ -277,7 +264,7 @@ main (int    argc,
 
   priv = g_new0 (GksPrivate, 1);
 
-  priv->keys = g_ptr_array_new_with_free_func ((GDestroyNotify) gks_key_free);
+  priv->keys = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
 
   priv->application = gtk_application_new ("org.gnome.KeySign", 0);
   g_signal_connect (priv->application, "startup",
