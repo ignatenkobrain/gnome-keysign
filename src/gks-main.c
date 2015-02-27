@@ -25,6 +25,7 @@
 
 #include "gks-cleanup.h"
 #include "gks-gpg.h"
+#include "gks-row.h"
 
 typedef struct {
   GPtrArray      *keys;
@@ -80,37 +81,28 @@ gks_remove_childrens (GtkContainer *container)
   g_list_free (children);
 }
 
-static void
-gks_add_key_to_list (gpointer data,
-                     gpointer user_data)
+gboolean
+gks_is_signed (GksRow   *row,
+               gpointer  user_data)
 {
-  GksKey *k = (GksKey *) data;
+  if (gks_row_get_times_signed (row) > 0)
+    return TRUE;
+
+  return FALSE;
+}
+
+static void
+gks_add_key_to_list (GksKey               *k,
+                     GtkListBox           *lbox,
+                     GtkListBoxFilterFunc  filter)
+{
   gpgme_key_t key = k->key;
   gpgme_user_id_t subkey;
-  GtkListBox *lbox = GTK_LIST_BOX (user_data);
-  GtkBuilder *builder;
-  gint retval, i;
-  gchar *comment;
+  GtkWidget *row;
+  gint i;
+  gchar *comment, *expires;
   _cleanup_error_free_ GError *error = NULL;
-
-  builder = gtk_builder_new ();
-  retval = gtk_builder_add_from_resource (builder,
-                                          "/org/gnome/KeySign/gks-row.ui",
-                                          &error);
-  if (retval == 0) {
-    g_warning ("failed to load ui: %s", error->message);
-    return;
-  }
-
-  GtkWidget *row = GTK_WIDGET (gtk_builder_get_object (builder, "row"));
-  GtkLabel *name_label = GTK_LABEL (
-      gtk_builder_get_object (builder, "name_label"));
-  GtkLabel *description_label = GTK_LABEL (
-      gtk_builder_get_object (builder, "description_label"));
-  GtkLabel *signed_times_label = GTK_LABEL (
-      gtk_builder_get_object (builder, "signed_times_label"));
-  GtkLabel *expiration_label = GTK_LABEL (
-      gtk_builder_get_object (builder, "expiration_label"));
+  GDateTime *date;
 
   subkey = key->uids;
   i = 0;
@@ -121,25 +113,22 @@ gks_add_key_to_list (gpointer data,
     i++;
   }
 
-  gchar *expires = g_strdup ("never");
+  expires = g_strdup ("never");
   if (key->subkeys->expires != 0) {
-    GDateTime *date = g_date_time_new_from_unix_local (key->subkeys->expires);
+    date = g_date_time_new_from_unix_local (key->subkeys->expires);
     expires = g_date_time_format (date, "%Y-%m-%d");
     g_date_time_unref (date);
   }
-  const gchar *format = "<span size=\"small\">Expires %s</span>";
-  gchar *markup;
-  markup = g_markup_printf_escaped (format, expires);
 
-  gtk_label_set_text (name_label, key->subkeys->keyid);
-  gtk_label_set_text (description_label, comment);
-  gtk_label_set_text (signed_times_label,
-                      g_strdup_printf ("%u", k->times_signed));
-  gtk_label_set_markup (expiration_label, markup);
+  row = GTK_WIDGET (gks_row_new (key->subkeys->keyid,
+                                 k->times_signed,
+                                 comment,
+                                 expires));
+
   gtk_list_box_insert (lbox, row, -1);
+  gtk_list_box_set_filter_func (lbox, filter, NULL, NULL);
   gtk_widget_show_all (row);
   g_free (comment);
-  g_free (markup);
   g_free (expires);
 }
 
@@ -152,14 +141,12 @@ gks_refresh_keys_ui (GksPrivate *priv)
       gtk_builder_get_object (priv->builder, "signed_keys"));
 
   gks_remove_childrens (GTK_CONTAINER (my_keys));
-  g_ptr_array_foreach (priv->keys, (GFunc) gks_add_key_to_list,
-                       (gpointer) my_keys);
-
   gks_remove_childrens (GTK_CONTAINER (signed_keys));
+
   for (gint i = 0; i < priv->keys->len; i++) {
     GksKey *k = g_ptr_array_index (priv->keys, i);
-    if (k->times_signed > 0)
-      gks_add_key_to_list ((gpointer) k, (gpointer) signed_keys);
+    gks_add_key_to_list (k, my_keys, NULL);
+    gks_add_key_to_list (k, signed_keys, (GtkListBoxFilterFunc) gks_is_signed);
   }
 }
 
@@ -191,21 +178,14 @@ gks_refresh_keys (GApplication *application,
 }
 
 static void
-gks_key_presented_cb (GtkListBox    *box,
-                      GtkListBoxRow *row,
-                      GksPrivate    *priv)
+gks_key_presented_cb (GtkListBox *box,
+                      GksRow     *row,
+                      GksPrivate *priv)
 {
-  GList *grid;
-  GtkLabel *name_label, *signed_times_label;
   const gchar *keyid;
   gint times_signed;
 
-  grid = gtk_container_get_children (GTK_CONTAINER (row));
-  name_label = GTK_LABEL (gtk_grid_get_child_at (GTK_GRID (grid->data), 0, 0));
-  signed_times_label = GTK_LABEL (gtk_grid_get_child_at (GTK_GRID (grid->data),
-                                                         1, 0));
-  g_list_free (grid);
-  keyid = gtk_label_get_text (name_label);
+  keyid = gks_row_get_keyid (row);
   for (gint i = 0; i < priv->keys->len; i++) {
     GksKey *key = g_ptr_array_index (priv->keys, i);
     if (g_strcmp0 (key->key->subkeys->keyid, keyid) == 0) {
@@ -215,11 +195,8 @@ gks_key_presented_cb (GtkListBox    *box,
   }
   g_key_file_set_integer (priv->data, keyid,
                           "times_signed", times_signed);
-  gchar buf[G_ASCII_DTOSTR_BUF_SIZE];
-  gchar *t = g_ascii_dtostr (buf, sizeof (buf), times_signed);
-  gtk_label_set_text (signed_times_label, t);
+  gks_row_set_times_signed (row, times_signed);
   gks_save_cache (priv);
-  gks_refresh_keys_ui (priv);
 }
 
 static void
@@ -262,6 +239,7 @@ gks_startup_cb (GApplication *application,
   keys = GTK_WIDGET (gtk_builder_get_object (priv->builder, "signed_keys"));
   g_signal_connect (keys, "row-activated",
                     G_CALLBACK (gks_key_presented_cb), priv);
+  /* TODO: connect signal for switching GtkStack to gks_refresh_keys_ui */
 
   gks_refresh_keys (application, priv);
 
