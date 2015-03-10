@@ -11,6 +11,6 @@ libkeysign = static_library('keysign',
                             install : false)
 
 executable('gnome-keysign',
-           'gks-main.c', resources_c, resources_h,
+           'gks-main.c', resources,
            dependencies : [glib, gpgme, gtk],
            link_with : libkeysign)
