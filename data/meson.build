@@ -2,7 +2,7 @@ gnome = import('gnome')
 
 resources = gnome.compile_resources('gks-resources',
                                     'gnome-keysign.gresource.xml',
-                                    source_dir : 'data',
+                                    source_dir : '.',
                                     c_name : 'gks')
 
 install_data(sources : 'gnome-keysign.desktop',

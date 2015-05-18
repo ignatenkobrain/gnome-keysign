@@ -23,7 +23,6 @@
 #include <locale.h>
 #include <stdlib.h>
 
-#include "gks-cleanup.h"
 #include "gks-gpg.h"
 #include "gks-row.h"
 
@@ -101,7 +100,7 @@ gks_add_key_to_list (GksKey               *k,
   GtkWidget *row;
   gint i;
   gchar *comment, *expires;
-  _cleanup_error_free_ GError *error = NULL;
+  g_autoptr(GError) error = NULL;
   GDateTime *date;
 
   subkey = key->uids;
@@ -214,7 +213,7 @@ gks_startup_cb (GApplication *application,
 {
   GtkWidget *main_window, *refresh_btn, *keys;
   gint retval;
-  _cleanup_error_free_ GError *error = NULL;
+  g_autoptr(GError) error = NULL;
 
   priv->builder = gtk_builder_new ();
   retval = gtk_builder_add_from_resource (priv->builder,
@@ -254,7 +253,7 @@ main (int    argc,
   GOptionContext *context;
   gboolean verbose = FALSE;
   int status = EXIT_SUCCESS;
-  _cleanup_error_free_ GError *error = NULL;
+  g_autoptr(GError) error = NULL;
   const GOptionEntry options[] = {
     { "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose,
       "Show extra debugging information", NULL },
